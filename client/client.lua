@@ -312,20 +312,17 @@ end)
 
 -- View Boats for Purchase
 RegisterNUICallback("LoadBoat", function(data)
+    local boatModel = data.boatModel
     if MyBoat_entity ~= nil then
         DeleteEntity(MyBoat_entity)
         MyBoat_entity = nil
     end
 
-    local boatModel = data.boatModel
-    local modelHash = joaat(boatModel)
-    if IsModelValid(modelHash) then
-        if not HasModelLoaded(modelHash) then
-            RequestModel(modelHash)
-            while not HasModelLoaded(modelHash) do
-                Citizen.Wait(10)
-            end
-        end
+    local model = joaat(boatModel)
+    RequestModel(model)
+    while not HasModelLoaded(model) do
+        RequestModel(model)
+        Citizen.Wait(10)
     end
 
     if ShowroomBoat_entity ~= nil then
@@ -339,7 +336,7 @@ RegisterNUICallback("LoadBoat", function(data)
         SetCamFov(BoatCam, 80.0)
     end
     local shopConfig = Config.boatShops[ShopId]
-    ShowroomBoat_entity = CreateVehicle(modelHash, shopConfig.spawn.x, shopConfig.spawn.y, shopConfig.spawn.z, shopConfig.spawn.h, false, false)
+    ShowroomBoat_entity = CreateVehicle(model, shopConfig.spawn.x, shopConfig.spawn.y, shopConfig.spawn.z, shopConfig.spawn.h, false, false)
     Citizen.InvokeNative(0x7263332501E07F52, ShowroomBoat_entity, true) -- SetVehicleOnGroundProperly
     Citizen.InvokeNative(0x7D9EFB7AD6B19754, ShowroomBoat_entity, true) -- FreezeEntityPosition
 end)
@@ -395,22 +392,23 @@ end)
 
 -- View Player Owned Boats
 RegisterNUICallback("LoadMyBoat", function(data)
+    local boatModel = data.BoatModel
+
     if ShowroomBoat_entity ~= nil then
         DeleteEntity(ShowroomBoat_entity)
         ShowroomBoat_entity = nil
     end
+
+    local model = joaat(boatModel)
+    RequestModel(model)
+    while not HasModelLoaded(model) do
+        RequestModel(model)
+        Citizen.Wait(10)
+    end
+
     if MyBoat_entity ~= nil then
         DeleteEntity(MyBoat_entity)
         MyBoat_entity = nil
-    end
-
-    local boatModel = data.BoatModel
-    local modelHash = joaat(boatModel)
-    if not HasModelLoaded(modelHash) then
-        RequestModel(modelHash)
-        while not HasModelLoaded(modelHash) do
-            Citizen.Wait(10)
-        end
     end
 
     if boatModel ~= "keelboat" then
@@ -420,7 +418,7 @@ RegisterNUICallback("LoadMyBoat", function(data)
     end
 
     local shopConfig = Config.boatShops[ShopId]
-    MyBoat_entity = CreateVehicle(modelHash, shopConfig.spawn.x, shopConfig.spawn.y, shopConfig.spawn.z, shopConfig.spawn.h, false, false)
+    MyBoat_entity = CreateVehicle(model, shopConfig.spawn.x, shopConfig.spawn.y, shopConfig.spawn.z, shopConfig.spawn.h, false, false)
     Citizen.InvokeNative(0x7263332501E07F52, MyBoat_entity, true) -- SetVehicleOnGroundProperly
     Citizen.InvokeNative(0x7D9EFB7AD6B19754, MyBoat_entity, true) -- FreezeEntityPosition
 end)
