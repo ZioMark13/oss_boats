@@ -68,18 +68,23 @@ window.addEventListener('message', function(event) {
             const boatModel = tab.model;
             $('#page_myboats .scroll-container .collapsible').append(`
                 <li>
-                    <div id="heads" class="collapsible-header col s12 panel">
+                    <div id="${boatId}" class="collapsible-header col s12 panel">
                         <div class="col s12 panel-title">
                             <h6 class="grey-text plus">${boatName}</h6>
                         </div>
                     </div>
-                    <div class="collapsible-body col s12 panel-myboat item" id="${boatId}">
-                        <button class="col s4 panel-col item-myboat" onclick="Select(${boatId}, '${boatModel}')">Select</button>
+                    <div class="collapsible-body col s12 panel-myboat item">
+                        <button class="col s4 panel-col item-myboat" onclick="Rename(${boatId})">Rename</button>
                         <button class="col s4 panel-col item-myboat" onclick="Launch(${boatId}, '${boatModel}', '${boatName}')">Launch</button>
                         <button class="col s4 panel-col item-myboat" onclick="Sell(${boatId}, '${boatName}')">Sell</button>
                     </div>
                 </li>
             `);
+            $(`#page_myboats .scroll-container .collapsible #${boatId}`).hover(function() {  
+                $(this).click(function() {
+                    $.post('http://oss_boats/LoadMyBoat', JSON.stringify({ BoatId: boatId, BoatModel: boatModel}));
+                });                         
+            }, function() {});
         };
     };
 });
@@ -95,9 +100,12 @@ function BuyBoat(modelB, price, isCash) {
     };
 };
 
-function Select(boatId, boatModel) {    
-    $.post('http://oss_boats/LoadMyBoat', JSON.stringify({ BoatId: boatId, BoatModel: boatModel }));
-};
+function Rename(boatId) {
+    $('#page_myboats .scroll-container .collapsible').html('');
+    $('#page_shop .scroll-container .collapsible').html('');
+    $("#creatormenu").fadeOut(1000);
+    $.post('http://oss_boats/RenameBoat', JSON.stringify({BoatId: boatId}));
+}
 
 function Launch(boatId, boatModel, boatName) {    
     $.post('http://oss_boats/LaunchBoat', JSON.stringify({ BoatId: boatId, BoatModel: boatModel, BoatName: boatName }));
