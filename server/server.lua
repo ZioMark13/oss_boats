@@ -46,7 +46,8 @@ AddEventHandler('oss_boats:BuyBoat', function(data)
                 return
             end
         end
-        TriggerClientEvent('oss_boats:SetBoatName', _source, data)
+        local action = "newBoat"
+        TriggerClientEvent('oss_boats:SetBoatName', _source, data, action)
     end)
 end)
 
@@ -57,9 +58,21 @@ AddEventHandler('oss_boats:SaveNewBoat', function(data, name)
     local Character = VORPcore.getUser(_source).getUsedCharacter
     local identifier = Character.identifier
     local charid = Character.charIdentifier
+    local boatName = tostring(name)
+    local boatModel = data.ModelB
 
-    MySQL.Async.execute('INSERT INTO boats (identifier, charid, name, model) VALUES (?, ?, ?, ?)', {identifier, charid, tostring(name), data.ModelB},
+    MySQL.Async.execute('INSERT INTO boats (identifier, charid, name, model) VALUES (?, ?, ?, ?)', {identifier, charid, boatName, boatModel},
         function(done)
+    end)
+end)
+
+-- Rename Player Owned Boat
+RegisterServerEvent('oss_boats:UpdateBoatName')
+AddEventHandler('oss_boats:UpdateBoatName', function(data, name)
+    local boatName = tostring(name)
+    local boatId = data.BoatId
+    MySQL.Async.execute('UPDATE boats SET name = ? WHERE id = ?', {boatName, boatId},
+    function(done)
     end)
 end)
 
@@ -112,14 +125,14 @@ AddEventHandler('oss_boats:SellBoat', function(boatId, boatName, shopId)
     end)
 end)
 
--- Register Horse Inventory
+-- Register Boat Inventory
 RegisterServerEvent('oss_boats:RegisterInventory')
 AddEventHandler('oss_boats:RegisterInventory', function(id)
 
     VORPInv.registerInventory("boat_" .. tostring(id), _U("boatInv"), tonumber(Config.invLimit))
 end)
 
--- Open Horse Inventory
+-- Open Boat Inventory
 RegisterServerEvent('oss_boats:OpenInventory')
 AddEventHandler('oss_boats:OpenInventory', function(id)
     local _source = source
