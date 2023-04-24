@@ -351,7 +351,7 @@ RegisterNUICallback("BuyBoat", function(data)
 end)
 
 RegisterNetEvent('oss_boats:SetBoatName')
-AddEventHandler('oss_boats:SetBoatName', function(data)
+AddEventHandler('oss_boats:SetBoatName', function(data, action)
 
     SendNUIMessage({ action = "hide" })
     SetNuiFocus(false, false)
@@ -367,7 +367,12 @@ AddEventHandler('oss_boats:SetBoatName', function(data)
 		end
 		if (GetOnscreenKeyboardResult()) then
             boatName = GetOnscreenKeyboardResult()
-            TriggerServerEvent('oss_boats:SaveNewBoat', data, boatName)
+            if action == "newBoat" then
+                TriggerServerEvent('oss_boats:SaveNewBoat', data, boatName)
+
+            elseif action == "rename" then
+                TriggerServerEvent('oss_boats:UpdateBoatName', data, boatName)
+            end
 
             SendNUIMessage({
                 action = "show",
@@ -380,6 +385,12 @@ AddEventHandler('oss_boats:SetBoatName', function(data)
             TriggerServerEvent('oss_boats:GetMyBoats')
 		end
     end)
+end)
+
+-- Rename Owned Horse
+RegisterNUICallback("RenameBoat", function(data)
+    local action = "rename"
+    TriggerEvent('oss_boats:SetBoatName', data, action)
 end)
 
 -- View Player Owned Boats
@@ -462,7 +473,7 @@ end)
 RegisterNUICallback("SellBoat", function(data)
     DeleteEntity(MyBoat_entity)
 
-    local boatId = tonumber(data.BoatID)
+    local boatId = tonumber(data.BoatId)
     local boatName = data.BoatName
     TriggerServerEvent('oss_boats:SellBoat', boatId, boatName, ShopId)
 end)
