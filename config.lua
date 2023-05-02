@@ -16,7 +16,7 @@ Config.returnKey = 0xD9D0E1C0 --[spacebar]
 Config.blockNpcBoats = false -- If true, will block the spawning of NPC boats
 
 -- Limit Number of Boats per Player
-Config.maxBoats = 8 -- Default: 8
+Config.maxBoats = 5 -- Default: 5
 
 -- Number of Items Allowed in Boat Inventory
 Config.invLimit = 200 -- Default: 200
