@@ -46,8 +46,8 @@ AddEventHandler('oss_boats:BuyBoat', function(data)
                 return
             end
         end
-        local action = "newBoat"
-        TriggerClientEvent('oss_boats:SetBoatName', _source, data, action)
+        local rename = false
+        TriggerClientEvent('oss_boats:SetBoatName', _source, data, rename)
     end)
 end)
 
@@ -58,21 +58,22 @@ AddEventHandler('oss_boats:SaveNewBoat', function(data, name)
     local Character = VORPcore.getUser(_source).getUsedCharacter
     local identifier = Character.identifier
     local charid = Character.charIdentifier
-    local boatName = tostring(name)
     local boatModel = data.ModelB
 
-    MySQL.Async.execute('INSERT INTO boats (identifier, charid, name, model) VALUES (?, ?, ?, ?)', {identifier, charid, boatName, boatModel},
-        function(done)
+    MySQL.Async.execute('INSERT INTO boats (identifier, charid, name, model) VALUES (?, ?, ?, ?)', {identifier, charid, name, boatModel},
+    function(done)
+        TriggerClientEvent('oss_boats:BoatMenu', _source)
     end)
 end)
 
 -- Rename Player Owned Boat
 RegisterServerEvent('oss_boats:UpdateBoatName')
 AddEventHandler('oss_boats:UpdateBoatName', function(data, name)
-    local boatName = tostring(name)
+    local _source = source
     local boatId = data.BoatId
-    MySQL.Async.execute('UPDATE boats SET name = ? WHERE id = ?', {boatName, boatId},
+    MySQL.Async.execute('UPDATE boats SET name = ? WHERE id = ?', {name, boatId},
     function(done)
+        TriggerClientEvent('oss_boats:BoatMenu', _source)
     end)
 end)
 
@@ -86,7 +87,7 @@ AddEventHandler('oss_boats:GetMyBoats', function()
 
     MySQL.Async.fetchAll('SELECT * FROM boats WHERE identifier = ? AND charid = ?', {identifier, charid},
     function(boats)
-        TriggerClientEvent('oss_boats:ReceiveBoatsData', _source, boats)
+        TriggerClientEvent('oss_boats:BoatsData', _source, boats)
     end)
 end)
 
@@ -106,19 +107,18 @@ AddEventHandler('oss_boats:SellBoat', function(boatId, boatName, shopId)
                 modelBoat = boats[i].model
                 MySQL.Async.execute('DELETE FROM boats WHERE identifier = ? AND charid = ? AND id = ?', {identifier, charid, boatId},
                 function(done)
-                end)
-            end
-        end
-
-        for _,boatModels in pairs(Config.boatShops[shopId].boats) do
-            for model,boatConfig in pairs(boatModels) do
-                if model ~= "boatType" then
-                    if model == modelBoat then
-                        local sellPrice = boatConfig.sellPrice
-                        Character.addCurrency(0, sellPrice)
-                        VORPcore.NotifyRightTip(_source, _U("soldBoat") .. boatName .. _U("frcash") .. sellPrice, 5000)
+                    for _,boatModels in pairs(Config.boatShops[shopId].boats) do
+                        for model,boatConfig in pairs(boatModels) do
+                            if model ~= "boatType" then
+                                if model == modelBoat then
+                                    local sellPrice = boatConfig.sellPrice
+                                    Character.addCurrency(0, sellPrice)
+                                    VORPcore.NotifyRightTip(_source, _U("soldBoat") .. boatName .. _U("frcash") .. sellPrice, 5000)
+                                end
+                            end
+                        end
                     end
-                end
+                end)
             end
         end
         TriggerClientEvent('oss_boats:BoatMenu', _source)

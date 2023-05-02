@@ -13,7 +13,7 @@ local PlayerJob
 local JobName
 local JobGrade
 -- Boats
-local BoatShopName
+local ShopName
 local ShowroomBoat_entity
 local MyBoat_entity
 local MyBoat = nil
@@ -284,53 +284,42 @@ end)
 function OpenMenu(shopId)
     InMenu = true
     ShopId = shopId
-    local shopConfig = Config.boatShops[ShopId]
-    BoatShopName = shopConfig.shopName
+    ShopName = Config.boatShops[ShopId].shopName
+
     CreateCamera()
 
-    SendNUIMessage({
-        action = "show",
-        shopData = GetShopData(),
-        location = BoatShopName
-    })
-    SetNuiFocus(true, true)
     TriggerServerEvent('oss_boats:GetMyBoats')
 end
 
--- Get Boat Data for Purchases
-function GetShopData()
-    local ret = Config.boatShops[ShopId].boats
-    return ret
-end
-
 -- Get Boat Data for Players Boats
-RegisterNetEvent('oss_boats:ReceiveBoatsData')
-AddEventHandler('oss_boats:ReceiveBoatsData', function(dataBoats)
+RegisterNetEvent('oss_boats:BoatsData')
+AddEventHandler('oss_boats:BoatsData', function(data)
 
-    SendNUIMessage({ myBoatsData = dataBoats })
+    SendNUIMessage({
+        action = "show",
+        shopBoats = Config.boatShops[ShopId].boats,
+        location = ShopName,
+        myBoats = data
+    })
+    SetNuiFocus(true, true)
 end)
 
 -- View Boats for Purchase
-RegisterNUICallback("LoadBoat", function(data)
-    local boatModel = data.boatModel
+RegisterNUICallback("LoadBoat", function(data, cb)
     if MyBoat_entity ~= nil then
         DeleteEntity(MyBoat_entity)
         MyBoat_entity = nil
     end
 
-    local model = joaat(boatModel)
-    RequestModel(model)
-    while not HasModelLoaded(model) do
-        RequestModel(model)
-        Citizen.Wait(10)
-    end
+    local model = joaat(data.BoatModel)
+    LoadBoatModel(model)
 
     if ShowroomBoat_entity ~= nil then
         DeleteEntity(ShowroomBoat_entity)
         ShowroomBoat_entity = nil
     end
 
-    if boatModel ~= "keelboat" then
+    if model ~= "keelboat" then
         SetCamFov(BoatCam, 50.0)
     else
         SetCamFov(BoatCam, 80.0)
@@ -339,19 +328,19 @@ RegisterNUICallback("LoadBoat", function(data)
     ShowroomBoat_entity = CreateVehicle(model, shopConfig.spawn.x, shopConfig.spawn.y, shopConfig.spawn.z, shopConfig.spawn.h, false, false)
     Citizen.InvokeNative(0x7263332501E07F52, ShowroomBoat_entity, true) -- SetVehicleOnGroundProperly
     Citizen.InvokeNative(0x7D9EFB7AD6B19754, ShowroomBoat_entity, true) -- FreezeEntityPosition
+    cb('ok')
 end)
 
 -- Buy and Name New Boat
-RegisterNUICallback("BuyBoat", function(data)
+RegisterNUICallback("BuyBoat", function(data, cb)
 
     TriggerServerEvent('oss_boats:BuyBoat', data)
+    cb('ok')
 end)
 
 RegisterNetEvent('oss_boats:SetBoatName')
-AddEventHandler('oss_boats:SetBoatName', function(data, action)
-
-    SendNUIMessage({ action = "hide" })
-    SetNuiFocus(false, false)
+AddEventHandler('oss_boats:SetBoatName', function(data, rename)
+    HideMenu()
     Wait(200)
 
     local boatName = ""
@@ -364,54 +353,38 @@ AddEventHandler('oss_boats:SetBoatName', function(data, action)
 		end
 		if (GetOnscreenKeyboardResult()) then
             boatName = GetOnscreenKeyboardResult()
-            if action == "newBoat" then
+            if not rename then
                 TriggerServerEvent('oss_boats:SaveNewBoat', data, boatName)
-
-            elseif action == "rename" then
+            else
                 TriggerServerEvent('oss_boats:UpdateBoatName', data, boatName)
             end
-
-            SendNUIMessage({
-                action = "show",
-                shopData = GetShopData(),
-                location = BoatShopName
-            })
-            SetNuiFocus(true, true)
-            Wait(1000)
-
-            TriggerServerEvent('oss_boats:GetMyBoats')
 		end
     end)
 end)
 
 -- Rename Owned Horse
-RegisterNUICallback("RenameBoat", function(data)
-    local action = "rename"
-    TriggerEvent('oss_boats:SetBoatName', data, action)
+RegisterNUICallback("RenameBoat", function(data, cb)
+    local rename = true
+    TriggerEvent('oss_boats:SetBoatName', data, rename)
+    cb('ok')
 end)
 
 -- View Player Owned Boats
-RegisterNUICallback("LoadMyBoat", function(data)
-    local boatModel = data.BoatModel
-
+RegisterNUICallback("LoadMyBoat", function(data, cb)
     if ShowroomBoat_entity ~= nil then
         DeleteEntity(ShowroomBoat_entity)
         ShowroomBoat_entity = nil
     end
 
-    local model = joaat(boatModel)
-    RequestModel(model)
-    while not HasModelLoaded(model) do
-        RequestModel(model)
-        Citizen.Wait(10)
-    end
+    local model = joaat(data.BoatModel)
+    LoadBoatModel(model)
 
     if MyBoat_entity ~= nil then
         DeleteEntity(MyBoat_entity)
         MyBoat_entity = nil
     end
 
-    if boatModel ~= "keelboat" then
+    if model ~= "keelboat" then
         SetCamFov(BoatCam, 50.0)
     else
         SetCamFov(BoatCam, 80.0)
@@ -421,81 +394,92 @@ RegisterNUICallback("LoadMyBoat", function(data)
     MyBoat_entity = CreateVehicle(model, shopConfig.spawn.x, shopConfig.spawn.y, shopConfig.spawn.z, shopConfig.spawn.h, false, false)
     Citizen.InvokeNative(0x7263332501E07F52, MyBoat_entity, true) -- SetVehicleOnGroundProperly
     Citizen.InvokeNative(0x7D9EFB7AD6B19754, MyBoat_entity, true) -- FreezeEntityPosition
+    SetModelAsNoLongerNeeded(model)
+    cb('ok')
 end)
 
 -- Launch Player Owned Boats
-RegisterNUICallback("LaunchBoat", function(data)
-    if MyBoat then
+RegisterNUICallback("LaunchBoat", function(data, cb)
+    CloseMenu()
+    if MyBoat ~= nil then
         DeleteEntity(MyBoat)
         MyBoat = nil
     end
     isAnchored = false
 
     MyBoatId = data.BoatId
-    local myBoatModel = data.BoatModel
-    local myBoatName = data.BoatName
-    local player = PlayerPedId()
+
+    local model = joaat(data.BoatModel)
+    LoadBoatModel(model)
+
     local boatConfig = Config.boatShops[ShopId]
-    RequestModel(myBoatModel)
-    while not HasModelLoaded(myBoatModel) do
-        Wait(100)
-    end
-
-    MyBoat = CreateVehicle(myBoatModel, boatConfig.spawn.x, boatConfig.spawn.y, boatConfig.spawn.z, boatConfig.spawn.h, true, false)
+    MyBoat = CreateVehicle(model, boatConfig.spawn.x, boatConfig.spawn.y, boatConfig.spawn.z, boatConfig.spawn.h, true, false)
     SetVehicleOnGroundProperly(MyBoat)
-    SetModelAsNoLongerNeeded(myBoatModel)
+    SetModelAsNoLongerNeeded(model)
     SetEntityInvincible(MyBoat, 1)
-    DoScreenFadeOut(500)
-    Wait(500)
-    SetPedIntoVehicle(player, MyBoat, -1)
-    Wait(500)
-    DoScreenFadeIn(500)
-
-    TriggerServerEvent('oss_boats:RegisterInventory', MyBoatId)
-
-    local boatBlip = Citizen.InvokeNative(0x23F74C2FDA6E7C61, -1749618580, MyBoat) -- BlipAddForEntity
-    SetBlipSprite(boatBlip, joaat("blip_canoe"), true)
-    Citizen.InvokeNative(0x9CB1A1623062F402, boatBlip, myBoatName) -- SetBlipName
-    VORPcore.NotifyRightTip(_U("boatMenuTip"),4000)
-end)
-
-RegisterCommand("enterBoat", function(rawCommand)
     DoScreenFadeOut(500)
     Wait(500)
     SetPedIntoVehicle(PlayerPedId(), MyBoat, -1)
     Wait(500)
     DoScreenFadeIn(500)
+
+    TriggerServerEvent('oss_boats:RegisterInventory', MyBoatId)
+
+    local myBoatName = data.BoatName
+    local boatBlip = Citizen.InvokeNative(0x23F74C2FDA6E7C61, -1749618580, MyBoat) -- BlipAddForEntity
+    SetBlipSprite(boatBlip, joaat("blip_canoe"), true)
+    Citizen.InvokeNative(0x9CB1A1623062F402, boatBlip, myBoatName) -- SetBlipName
+    VORPcore.NotifyRightTip(_U("boatMenuTip"),4000)
+    cb('ok')
 end)
 
 -- Sell Player Owned Boats
-RegisterNUICallback("SellBoat", function(data)
-    DeleteEntity(MyBoat_entity)
-
+RegisterNUICallback("SellBoat", function(data, cb)
     local boatId = tonumber(data.BoatId)
     local boatName = data.BoatName
+    DeleteEntity(MyBoat_entity)
+    HideMenu()
     TriggerServerEvent('oss_boats:SellBoat', boatId, boatName, ShopId)
+    cb('ok')
 end)
 
 -- Close Main Menu
-RegisterNUICallback("CloseMenu", function()
-    local player = PlayerPedId()
+RegisterNUICallback("CloseMenu", function(data, cb)
+    CloseMenu()
+    cb('ok')
+end)
 
-    SendNUIMessage({ action = "hide" })
-    SetNuiFocus(false, false)
+function CloseMenu()
+    HideMenu()
 
-    if ShowroomBoat_entity ~= nil then
+     if ShowroomBoat_entity ~= nil then
         DeleteEntity(ShowroomBoat_entity)
     end
+    ShowroomBoat_entity = nil
+
     if MyBoat_entity ~= nil then
         DeleteEntity(MyBoat_entity)
     end
+    MyBoat_entity = nil
 
     DestroyAllCams(true)
-    ShowroomBoat_entity = nil
     DisplayRadar(true)
     InMenu = false
-    ClearPedTasksImmediately(player)
-end)
+    ClearPedTasksImmediately(PlayerPedId())
+end
+
+function HideMenu()
+    SendNUIMessage({ action = "hide" })
+    SetNuiFocus(false, false)
+end
+
+function LoadBoatModel(model)
+    RequestModel(model)
+    while not HasModelLoaded(model) do
+        RequestModel(model)
+        Citizen.Wait(100)
+    end
+end
 
 -- Reopen Menu After Sell or Failed Purchase
 RegisterNetEvent('oss_boats:BoatMenu')
@@ -504,19 +488,13 @@ AddEventHandler('oss_boats:BoatMenu', function()
         DeleteEntity(ShowroomBoat_entity)
         ShowroomBoat_entity = nil
     end
-
-    SendNUIMessage({
-        action = "show",
-        shopData = GetShopData(),
-        location = BoatShopName
-    })
     TriggerServerEvent('oss_boats:GetMyBoats')
 end)
 
 -- Boat Actions
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(10)
+        Citizen.Wait(1)
         if Citizen.InvokeNative(0x580417101DDB492F, 2, Config.optionKey) then -- IsControlJustPressed
             if MyBoat then
                 local player = PlayerPedId()
@@ -630,27 +608,34 @@ function CreateCamera()
 end
 
 -- Rotate Boats while Viewing
-RegisterNUICallback("Rotate", function(data)
+RegisterNUICallback("Rotate", function(data, cb)
     local direction = data.RotateBoat
     if direction == "left" then
         Rotation(20)
     elseif direction == "right" then
         Rotation(-20)
     end
+    cb('ok')
 end)
 
 function Rotation(dir)
-    local ownedBoat = MyBoat_entity
-    local shopBoat = ShowroomBoat_entity
-    if ownedBoat then
-        local ownedRot = GetEntityHeading(ownedBoat) + dir
-        SetEntityHeading(ownedBoat, ownedRot % 360)
+    if MyBoat_entity then
+        local ownedRot = GetEntityHeading(MyBoat_entity) + dir
+        SetEntityHeading(MyBoat_entity, ownedRot % 360)
 
-    elseif shopBoat then
-        local shopRot = GetEntityHeading(shopBoat) + dir
-        SetEntityHeading(shopBoat, shopRot % 360)
+    elseif ShowroomBoat_entity then
+        local shopRot = GetEntityHeading(ShowroomBoat_entity) + dir
+        SetEntityHeading(ShowroomBoat_entity, shopRot % 360)
     end
 end
+
+RegisterCommand("boatEnter", function(rawCommand)
+    DoScreenFadeOut(500)
+    Wait(500)
+    SetPedIntoVehicle(PlayerPedId(), MyBoat, -1)
+    Wait(500)
+    DoScreenFadeIn(500)
+end)
 
 -- Prevents Boat from Sinking
 Citizen.CreateThread(function()
@@ -778,13 +763,17 @@ AddEventHandler('onResourceStop', function(resourceName)
         return
     end
     if InMenu == true then
-        ClearPedTasksImmediately(PlayerPedId())
-        PromptDelete(OpenShops)
-        PromptDelete(CloseShops)
-        PromptDelete(OpenReturn)
-        PromptDelete(CloseReturn)
+        SetNuiFocus(false, false)
+        SendNUIMessage({ action = "hide" })
         MenuData.CloseAll()
     end
+    ClearPedTasksImmediately(PlayerPedId())
+    PromptDelete(OpenShops)
+    PromptDelete(CloseShops)
+    PromptDelete(OpenReturn)
+    PromptDelete(CloseReturn)
+    DestroyAllCams(true)
+    DisplayRadar(true)
 
     if MyBoat then
         DeleteEntity(MyBoat)

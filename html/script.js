@@ -2,14 +2,14 @@ $('#creatormenu').fadeOut(0);
 
 window.addEventListener('message', function(event) {
     const action    = event.data.action;
-    const shopData  = event.data.shopData;
-    const boatData = event.data.myBoatsData;
+    const shopBoats  = event.data.shopBoats;
+    const myBoats = event.data.myBoats;
 
     if (action === "hide") {$("#creatormenu").fadeOut(1000);};
     if (action === "show") {$("#creatormenu").fadeIn(1000);};
 
-    if (shopData) {
-        for (const [index, table] of Object.entries(shopData)) {
+    if (shopBoats) {
+        for (const [index, table] of Object.entries(shopBoats)) {
             const boatType = table.boatType;
             if ($(`#page_shop .scroll-container .collapsible #${index}`).length <= 0) {
                 $('#page_shop .scroll-container .collapsible').append(`
@@ -23,34 +23,34 @@ window.addEventListener('message', function(event) {
                     </li>
                 `);
             };
-            for (const [_, boatData] of Object.entries(table)) {
-                if (_ != 'boatType') {
-                    let ModelBoat;
-                    const boatLabel = boatData.label;
-                    const priceCash  = boatData.cashPrice;
-                    const priceGold  = boatData.goldPrice;
+            for (const [model, boatConfig] of Object.entries(table)) {
+                if (model != 'boatType') {
+                    let modelBoat;
+                    const label = boatConfig.label;
+                    const cashPrice  = boatConfig.cashPrice;
+                    const goldPrice  = boatConfig.goldPrice;
                     $(`#page_shop .scroll-container .collapsible #${index} .collapsible-body`).append(`
-                        <div id="${_}" onhover="loadBoat(this)" class="col s12 panel-shop item">
+                        <div id="${model}" class="col s12 panel-shop item">
                             <div class="col s6 panel-col item">
-                                <h6 class="grey-text-shop title">${boatLabel}</h6>
+                                <h6 class="grey-text-shop title">${label}</h6>
                             </div>          
                             <div class="buy-buttons">
-                                <button class="btn-small"  onclick="BuyBoat('${_}', ${priceCash}, true)">
-                                    <img src="img/money.png"><span class="boat-price">${priceCash}</span>
+                                <button class="btn-small"  onclick="BuyBoat('${model}', ${cashPrice}, true)">
+                                    <img src="img/money.png"><span>${cashPrice}</span>
                                 </button>                                  
-                                <button class="btn-small right-btn"  onclick="BuyBoat('${_}', ${priceGold}, false)">                                                
-                                    <img src="img/gold.png"><span class="boat-price">${priceGold}</span>
+                                <button class="btn-small right-btn"  onclick="BuyBoat('${model}', ${goldPrice}, false)">                                                
+                                    <img src="img/gold.png"><span>${goldPrice}</span>
                                 </button>                                          
                             </div>
                         </div>
                     `);
-                    $(`#page_shop .scroll-container .collapsible #${index} .collapsible-body #${_}`).hover(function() {                       
+                    $(`#page_shop .scroll-container .collapsible #${index} .collapsible-body #${model}`).hover(function() {                       
                         $(this).click(function() {                        
-                            $(ModelBoat).addClass("selected");
+                            $(modelBoat).addClass("selected");
                             $('.selected').removeClass("selected"); 
-                            ModelBoat = $(this).attr('id');                       
+                            modelBoat = $(this).attr('id');                       
                             $(this).addClass('selected');
-                            $.post('http://oss_boats/LoadBoat', JSON.stringify({boatModel: $(this).attr('id')}));
+                            $.post('http://oss_boats/LoadBoat', JSON.stringify({BoatModel: $(this).attr('id')}));
                         });                       
                     }, function() {});
                 };
@@ -59,13 +59,13 @@ window.addEventListener('message', function(event) {
         const location  = event.data.location;
         document.getElementById('shop_name').innerHTML = location;
     };
-    if (boatData) {
+    if (myBoats) {
         $('#page_myboats .scroll-container .collapsible').html('');
         $('.collapsible').collapsible();
-        for (const [ind, tab] of Object.entries(boatData)) {
-            const boatName = tab.name;
-            const boatId = tab.id;
-            const boatModel = tab.model;
+        for (const [_, table] of Object.entries(MyBoats)) {
+            const boatName = table.name;
+            const boatId = table.id;
+            const boatModel = table.model;
             $('#page_myboats .scroll-container .collapsible').append(`
                 <li>
                     <div id="${boatId}" class="collapsible-header col s12 panel">
@@ -90,9 +90,6 @@ window.addEventListener('message', function(event) {
 });
 
 function BuyBoat(modelB, price, isCash) {
-    $('#page_myboats .scroll-container .collapsible').html('');
-    $('#page_shop .scroll-container .collapsible').html('');
-    $("#creatormenu").fadeOut(1000);
     if (isCash) {        
         $.post('http://oss_boats/BuyBoat', JSON.stringify({ ModelB: modelB, Cash: price, IsCash: isCash }));
     } else {
@@ -101,25 +98,15 @@ function BuyBoat(modelB, price, isCash) {
 };
 
 function Rename(boatId) {
-    $('#page_myboats .scroll-container .collapsible').html('');
-    $('#page_shop .scroll-container .collapsible').html('');
-    $("#creatormenu").fadeOut(1000);
     $.post('http://oss_boats/RenameBoat', JSON.stringify({BoatId: boatId}));
 }
 
 function Launch(boatId, boatModel, boatName) {    
     $.post('http://oss_boats/LaunchBoat', JSON.stringify({ BoatId: boatId, BoatModel: boatModel, BoatName: boatName }));
-    $('#page_myboats .scroll-container .collapsible').html('');
-    $('#page_shop .scroll-container .collapsible').html('');
-    $("#creatormenu").fadeOut(1000);
-    CloseMenu()
 };
 
 function Sell(boatId, boatName) {    
     $.post('http://oss_boats/SellBoat', JSON.stringify({ BoatId: boatId,  BoatName: boatName}));
-    $('#page_myboats .scroll-container .collapsible').html('');
-    $('#page_shop .scroll-container .collapsible').html('');
-    $("#creatormenu").fadeOut(1000);
 };
 
 function Rotate(direction) {
@@ -129,10 +116,7 @@ function Rotate(direction) {
 
 function CloseMenu() {
     $.post('http://oss_boats/CloseMenu');
-    $('#page_myboats .scroll-container .collapsible').html('');
-    $('#page_shop .scroll-container .collapsible').html('');
-    $("#creatormenu").fadeOut(1000);
-    ResetMenu();
+    ResetMenu()
 };
 
 let currentPage = 'page_myboats';
