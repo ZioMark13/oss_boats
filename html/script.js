@@ -62,7 +62,7 @@ window.addEventListener('message', function(event) {
     if (myBoats) {
         $('#page_myboats .scroll-container .collapsible').html('');
         $('.collapsible').collapsible();
-        for (const [_, table] of Object.entries(MyBoats)) {
+        for (const [_, table] of Object.entries(myBoats)) {
             const boatName = table.name;
             const boatId = table.id;
             const boatModel = table.model;
